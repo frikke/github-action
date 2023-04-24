@@ -4,19 +4,24 @@ description: 'Send test coverage data to Coveralls.io for analysis, change track
 author: 'Nick Merwin (Coveralls, Inc.)'
 inputs:
   github-token:
-    required: true
+    description: 'Put secrets.GITHUB_TOKEN here'
+    required: false
+    default: ${{ github.token }}
   path-to-lcov:
     description: 'Path to lcov file'
-    required: true
+    required: false
     default: './coverage/lcov.info'
   flag-name:
     description: 'Job flag name, e.g. "Unit", "Functional", or "Integration". Will be shown in the Coveralls UI.'
     required: false
   parallel:
-    description: 'Set to true if you are running parallel jobs, then use "parallel_finished: true" for the last action.'
+    description: 'Set to true if you are running parallel jobs, then use "parallel-finished: true" for the last action.'
     required: false
   parallel-finished:
     description: 'Set to true for the last action when using "parallel: true".'
+    required: false
+  carryforward:
+    description: 'Comma separated flags used to carryforward results from previous builds if some of the parallel jobs are missing.'
     required: false
   coveralls-endpoint:
     description: 'Coveralls Enterprise server (more info: https://enterprise.coveralls.io)'
@@ -31,6 +36,10 @@ inputs:
   git-commit:
     description: 'Override the commit sha'
     required: false
+  debug:
+    description: 'Enable debug logging'
+    required: false
+    default: false
 outputs:
   coveralls-api-result:
     description: 'Result status of Coveralls API post.'
@@ -38,5 +47,5 @@ branding:
   color: 'green'
   icon: 'percent'
 runs:
-  using: 'node12'
-  main: './lib/main.js'
+  using: 'node16'
+  main: './dist/index.js'

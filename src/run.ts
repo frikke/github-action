@@ -5,6 +5,12 @@ import path from 'path';
 import request, { Response } from 'request';
 import { adjustLcovBasePath } from './lcov-processor';
 
+process.env.NODE_COVERALLS_DEBUG = (
+  process.env.COVERALLS_DEBUG == 'true' ||
+    process.env.COVERALLS_DEBUG == '1' ||
+    core.getInput('debug') == 'true'
+) ? '1' : '';
+
 const coveralls = require('coveralls');
 
 interface WebhookResult {
@@ -30,7 +36,7 @@ export async function run() {
 
     const event = fs.readFileSync(process.env.GITHUB_EVENT_PATH!, 'utf8');
 
-    if (process.env.COVERALLS_DEBUG) {
+    if (process.env.NODE_COVERALLS_DEBUG) {
       console.log("Event Name: " + process.env.GITHUB_EVENT_NAME);
       console.log(event);
     }
@@ -55,16 +61,22 @@ export async function run() {
       process.env.COVERALLS_ENDPOINT = endpoint;
     }
 
-    const runId = process.env.GITHUB_RUN_ID;
+    const runId = process.env.COVERALLS_SERVICE_JOB_ID ? process.env.COVERALLS_SERVICE_JOB_ID : process.env.GITHUB_RUN_ID;
     process.env.COVERALLS_SERVICE_JOB_ID = runId;
+
+    const carryforward = core.getInput('carryforward');
+    if (carryforward != '') {
+      process.env.COVERALLS_CARRYFORWARD_FLAGS = carryforward;
+    }
 
     if(core.getInput('parallel-finished') != '') {
       const payload = {
         "repo_token": githubToken,
+        "carryforward": process.env.COVERALLS_CARRYFORWARD_FLAGS,
         "repo_name": process.env.GITHUB_REPOSITORY,
         "payload": { "build_num": runId, "status": "done" }
       };
-
+      console.log('Sending to coveralls', payload);
       request.post({
         url: `${process.env.COVERALLS_ENDPOINT || 'https://coveralls.io'}/webhook`,
         body: payload,
@@ -97,15 +109,7 @@ export async function run() {
 
     console.log(`Using lcov file: ${pathToLcov}`);
 
-    let file;
-
-    try {
-      file = fs.readFileSync(pathToLcov, 'utf8');
-    } catch (err) {
-      throw new Error("Lcov file not found.");
-    }
-
-
+    const file = fs.readFileSync(pathToLcov, 'utf8');
     const basePath = core.getInput('base-path');
     const adjustedFile = basePath ? adjustLcovBasePath(file, basePath) : file;
 
